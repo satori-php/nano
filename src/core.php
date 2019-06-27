@@ -151,25 +151,35 @@ function event(string $event, string $operation, ...$arguments): void
  * Middleware system.
  * Registers or runs middlewares.
  *
+ * @param string            $stackId      The unique name of the middleware stack.
  * @param callable          {argument #1} If argument is the callable then will be registered.
- * @param array<int, mixed> $arguments    Else all middlewares will run with these arguments.
+ * @param array<int, mixed> $arguments    Else stack middlewares will run with these arguments.
  *
  * @return array<int, mixed>|null Arguments after all middlewares.
  */
-function middleware(...$arguments): ?array
+function middleware(string $stackId, ...$arguments): ?array
 {
-    static $middlewares = [0 => null];
+    static $stacks = [];
+    if (is_callable($arguments[0] ?? null) && !isset($stacks[$stackId])) {
+        $stacks[$stackId] = function (string $stackId, ...$arguments): ?array {
+            static $middlewares = [0 => null];
+            if (is_callable($arguments[0] ?? null)) {
+                $middlewares[] = $arguments[0];
 
-    if (key($middlewares) === array_keys($middlewares)[count($middlewares) - 1] ?? null) {
-        reset($middlewares);
+                return null;
+            }
+            $lastKey = array_keys($middlewares)[count($middlewares) - 1] ?? null;
+            if (key($middlewares) === $lastKey) {
+                reset($middlewares);
+            }
+
+            return next($middlewares)($stackId, ...$arguments);
+        };
     }
-    if (is_callable($arguments[0] ?? false)) {
-        $middlewares[] = $arguments[0];
-
-        return null;
+    if (isset($stacks[$stackId])) {
+        return $stacks[$stackId]($stackId, ...$arguments);
     }
-
-    return next($middlewares)(...$arguments);
+    throw new \Exception("Error Processing Request", 1);
 }
 
 /**
