@@ -155,6 +155,8 @@ function event(string $event, string $operation, ...$arguments): void
  * @param callable          {argument #1} If argument is the callable then will be registered.
  * @param array<int, mixed> $arguments    Else stack middlewares will run with these arguments.
  *
+ * @throws \LogicException If the stack is not defined.
+ *
  * @return array<int, mixed>|null Arguments after all middlewares.
  */
 function middleware(string $stackId, ...$arguments): ?array
@@ -179,7 +181,7 @@ function middleware(string $stackId, ...$arguments): ?array
     if (isset($stacks[$stackId])) {
         return $stacks[$stackId]($stackId, ...$arguments);
     }
-    throw new \Exception("Error Processing Request", 1);
+    throw new \LogicException(sprintf('Stack "%s" is not defined.', $stackId));
 }
 
 /**
